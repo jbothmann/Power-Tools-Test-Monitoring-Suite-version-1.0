@@ -16,7 +16,7 @@ import threading
 
 version = "1.0"
 
-pollPeriod = 0.01 #in seconds
+pollPeriod = 0.2 #in seconds
 
 pollTimeout = 0.01
 
@@ -124,7 +124,7 @@ class Test:
         #draw control button
         self.button2.grid(row=5)
 
-        self.periodicCall() #Do first call and update to #TODO document
+        self.periodicCall() #begin periodic updating
     
        
     #Test.draw, draws the information to the screen based on internal info
@@ -175,12 +175,13 @@ class Test:
         if self.online:
             self.connectionHint.config(text="")
         else:
-            self.connectionHint.config(text="No Connection") #TODO: doesn't work
+            self.connectionHint.config(text="No Connection") #TODO: doesn't work (maybe fixed)
 
         #reconfigure the minimum size of the main window
         root.update_idletasks()
         root.minsize(width=max(root.winfo_reqwidth(),400), height=max(root.winfo_reqheight(),300))
 
+    #This method calls itself periodically to update the contents of the main station display widget
     def periodicCall(self):
         if self.showTest == True:
             self.updateLabel()
@@ -775,27 +776,27 @@ class Polling:
         self.running = True
 
     #main loop for recieving checking up and recieving from PLCs and continuing the GUI
-    def mainloop(self): #TODO: handle IndexError s when deleting
+    def mainloop(self): 
         #if the loop encounters an error while parsing, it will mark the test as offline and proceed to poll the next test
-        while(self.running): 
-            if self.currTestPoll < len(tests):
+        while(self.running):
+            if len(tests) > 0:
+                if self.currTestPoll >= len(tests):
+                    self.currTestPoll = 0 #reset poll index to zero
+                nextTest = tests[self.currTestPoll]
                 try:
-                    get = requests.get(main_url+"station/"+tests[self.currTestPoll].url)
-                    tests[self.currTestPoll].testNum = get.json()['number']
-                    tests[self.currTestPoll].name = get.json()['title']
-                    tests[self.currTestPoll].serial = get.json()['subtitle']
-                    tests[self.currTestPoll].status = get.json()['status']
-                    tests[self.currTestPoll].setData(get.json()['data'])
-                    tests[self.currTestPoll].setControls(get.json()['controls'])
-                    tests[self.currTestPoll].setOnline()
+                    get = requests.get(main_url+"station/"+nextTest.url)
+                    nextTest.testNum = get.json()['number']
+                    nextTest.name = get.json()['title']
+                    nextTest.serial = get.json()['subtitle']
+                    nextTest.status = get.json()['status']
+                    nextTest.setData(get.json()['data'])
+                    nextTest.setControls(get.json()['controls'])
 
                 except Exception as e:
-                    tests[self.currTestPoll].setOffline()
+                    nextTest.setOffline()
                 else:
-                    tests[self.currTestPoll].setOnline()
+                    nextTest.setOnline()
                 self.currTestPoll += 1
-            if self.currTestPoll >= len(tests): #reset poll index to zero
-                self.currTestPoll = 0
 
             sleep(pollPeriod)
 

@@ -1191,97 +1191,6 @@ def unlockDisplay():
         #set window minimum size
         unlocker.update_idletasks()
         unlocker.minsize(width=max(unlocker.winfo_reqwidth(),0), height=max(unlocker.winfo_reqheight(),0))
-
-#addComment, opens a new dialog which will allow the user to write and save comments for each test
-def addComment():
-    global tests
-    
-    if len(tests) == 0:
-        messagebox.showerror("Power Tools Test Manager", "There are no tests to add a comment to", parent=root.focus_get())
-        return
-    
-    #setup the new menu
-    commenter = T.apply(Toplevel())
-    commenter.title("Add a Comment")
-    commenter.grab_set() #make window modal
-    commenter.focus_set()
-    
-    #dictionary linking option name to internal index
-    l = {}
-    for i in range(len(tests)):
-        l["Test "+str(tests[i].testNum)+": "+tests[i].name] = i
-    
-    #draw test chooser dropdown
-    r=StringVar()
-    r.set("Choose a station to add a comment")
-    OptionMenu(commenter, r, *l.keys(), command=lambda r: saveButton.config(state=NORMAL)).grid(row=0, column=0, columnspan=2)
-    
-    commentEntry = Text(commenter, height=15, width=50)
-    commentEntry.grid(row=1, column=0, columnspan=2)
-
-    #adds the comment as a tuple to the test object, and closes the window
-    def add():
-        nonlocal commentEntry
-        tests[l[r.get()]].addComment(commentEntry.get('1.0', 'end-1c'))
-        commenter.destroy()
-                                    
-    #save button
-    saveButton = Button(commenter, text="Add Comment", command=add, state=DISABLED)
-    saveButton.grid(row=5, pady=5)
-    #cancel button
-    Button(commenter, text="Cancel", command=commenter.destroy).grid(row=5, column=1)
-
-    #set min window size
-    commenter.update_idletasks()
-    commenter.minsize(width=max(commenter.winfo_reqwidth(),0), height=max(commenter.winfo_reqheight(),0))
-
-#viewComments, opens a new dialog that allows the user to view the comments on a test, or all of the comments from all tests simultaneously  
-def viewComments():
-    global tests
-    global allComments
-
-    if len(tests) == 0:
-        messagebox.showerror("Power Tools Test Manager", "There are no stations to view", parent=root.focus_get())
-        return
-    
-    #setup the new menu
-    commentViewer = T.apply(Toplevel())
-    commentViewer.title("View Comments")
-    commentViewer.grab_set() #make window modal
-    commentViewer.focus_set()
-    
-    #dictionary linking option name to internal index
-    l = {}
-    l["View All"] = -1
-    for i in range(len(tests)):
-        l["Station "+str(tests[i].testNum)+": "+tests[i].name] = i
-
-    commentLabel = Label(commentViewer, justify=LEFT, anchor = W)
-    commentLabel.grid(row=1, column=0, columnspan=2, padx=10, pady=3)
-
-    #draws the comments to the screen
-    def displayComments(r):
-        nonlocal commentLabel
-        if r == "View All":
-            string = Test.getAllComments()
-        else:
-            string = tests[l[r]].getComments()
-        if string == "":
-            string = "No Comments"
-        commentLabel.config(text=string)
-
-    #draw test chooser dropdown
-    r=StringVar()
-    r.set("View All")
-    OptionMenu(commentViewer, r, *l.keys(), command=displayComments).grid(row=0, padx=10, pady=2)
-    #draws comments to the screen for the first time
-    displayComments(r.get())
-
-    Button(commentViewer, text='Exit', command=commentViewer.destroy).grid(row=0, column=1, padx=5)
-
-    #set min window size
-    commentViewer.update_idletasks()
-    commentViewer.minsize(width=max(commentViewer.winfo_reqwidth(),260), height=max(commentViewer.winfo_reqheight(),60))
     
 #editControls():  presents the user with a window where they can assign labels to the PLC's control coils for each station.
 #if given a valid TestNum from an existing station, the window will start with that station selected
@@ -1768,9 +1677,6 @@ def update():
         controlsMenu.entryconfig(0, label="Pause/Resume", state=NORMAL)
         controlsMenu.entryconfig(1, label="More Controls", command=openControls, state=NORMAL)
         
-        # testCommentsMenu.entryconfig(0, label="Add a Comment", command=addComment, state=NORMAL)
-        # testCommentsMenu.entryconfig(1, label="View Comments", command=viewComments, state=NORMAL)
-        
     else:
         fileMenu.entryconfig(0, label="Save Session", command=saveSession)
         fileMenu.entryconfig(1, label="Open Session", state=DISABLED)
@@ -1790,9 +1696,6 @@ def update():
         
         controlsMenu.entryconfig(0, label="Pause/Resume", state=DISABLED)
         controlsMenu.entryconfig(1, label="More Controls", state=DISABLED)
-        
-        # testCommentsMenu.entryconfig(0, label="Add a Comment", command=addComment)
-        # testCommentsMenu.entryconfig(1, label="View Comments", command=viewComments)
         
 
     T.apply([fileMenu, functionsMenu, viewMenu, lockSubMenu, controlsMenu])
@@ -1889,7 +1792,7 @@ class Server():
     #If debug mode is turned on, clients can use it to run arbitrary code.  Don't let that happen.
     def mainloop(self):
         try:
-            self.api.run(host='0.0.0.0', port=self.port, debug=False)
+            self.api.run(host='0.0.0.0', port=self.port, debug=False, ssl_context=None, threaded=True)
         finally:
             pass
 
@@ -2089,21 +1992,15 @@ class Polling:
         done = False #loop break condition
         if not theTest is None and theTest.testNum > 0 and theTest.testNum <= 247 and self.ser.is_open: #If test exists, has a valid slave ID, and serial port is connected
             while not done:
-                try:
-                    success, newData = self.__checkData(theTest.testNum)
+                success, newData = self.__checkData(theTest.testNum)
 
-                    if success: #ensure that all requests were successful
-                            
-                        theTest.set(newData)
-                        done = True #exit upon success
-                    else: 
-                        retryCount += 1
-                except serial.serialutil.SerialException: #handle case where serial port is unexpectedly disconnected during communication
-                    self.close()
-                    global tests
-                    for oo in tests:
-                        oo.setOffline()
-                    done = True #exit upon error
+                if success: #ensure that all requests were successful
+                        
+                    theTest.set(newData)
+                    done = True #exit upon success
+                else: 
+                    retryCount += 1
+            
                 if retryCount >= 3: #If the same test has been polled three times, with no response or bad responses, set the test as offline and continue
                     theTest.setOffline()
                     done = True #exit upon 3 unsuccessful retries
@@ -2170,20 +2067,14 @@ class Polling:
         done = False #loop break condition
         if not theTest is None and theTest.testNum > 0 and theTest.testNum <= 247 and self.ser.is_open: #If test exists, has a valid slave ID, and serial port is connected
             while not done:
-                try:
-                    success, contStatus = self.__checkControls(theTest.testNum)
+                success, contStatus = self.__checkControls(theTest.testNum)
 
-                    if success: #ensure that request was successful
-                        theTest.setControlStatus(contStatus)
-                        done = True #exit upon success
-                    else: 
-                        retryCount += 1
-                except serial.serialutil.SerialException: #handle case where serial port is unexpectedly disconnected during communication
-                    self.close()
-                    global tests
-                    for oo in tests:
-                        oo.setOffline()
-                    done = True #exit upon error
+                if success: #ensure that request was successful
+                    theTest.setControlStatus(contStatus)
+                    done = True #exit upon success
+                else: 
+                    retryCount += 1
+                
                 if retryCount >= 3: #If the same test has been polled three times, with no response or bad responses, set the test as offline and continue
                     theTest.setOffline()
                     done = True #exit upon 3 unsuccessful retries
@@ -2250,27 +2141,21 @@ class Polling:
         done = False #loop break condition
         if not theTest is None and theTest.testNum > 0 and theTest.testNum <= 247 and self.ser.is_open: #If test exists, has a valid slave ID, and serial port is connected
             while not done:
-                try:
-                    pSuccess, isPaused = self.__checkIfPaused(theTest.testNum)
-                    rSuccess, isRunning = self.__checkIfRunning(theTest.testNum)
+                pSuccess, isPaused = self.__checkIfPaused(theTest.testNum)
+                rSuccess, isRunning = self.__checkIfRunning(theTest.testNum)
 
-                    if pSuccess and rSuccess: #ensure that all requests were successful
-                        #update test status based on results
-                        if not isRunning:
-                            theTest.setStopped()
-                        elif isPaused:
-                            theTest.setPaused()
-                        else:
-                            theTest.setNormal()
-                        done = True #exit upon success
-                    else: 
-                        retryCount += 1
-                except serial.serialutil.SerialException: #handle case where serial port is unexpectedly disconnected during communication
-                    self.close()
-                    global tests
-                    for oo in tests:
-                        oo.setOffline()
-                    done = True #exit upon error
+                if pSuccess and rSuccess: #ensure that all requests were successful
+                    #update test status based on results
+                    if not isRunning:
+                        theTest.setStopped()
+                    elif isPaused:
+                        theTest.setPaused()
+                    else:
+                        theTest.setNormal()
+                    done = True #exit upon success
+                else: 
+                    retryCount += 1
+                
                 if retryCount >= 3: #If the same test has been polled three times, with no response or bad responses, set the test as offline and continue
 
                     theTest.setOffline()
@@ -2384,7 +2269,7 @@ class Polling:
             #print("Error, value received was neither true or false, received "+hex(b[3]))
             return False, None
 
-    #main loop for receiving checking up and receiving from PLCs and continuing the GUI #TODO: application crashes when serial connection is physically terminated during runtime
+    #main loop for receiving checking up and receiving from PLCs and continuing the GUI
     def mainloop(self):
         global tests
         self.running = True
@@ -2393,7 +2278,11 @@ class Polling:
         while(self.running): 
             while not self.q.empty():
                 job = self.q.get_nowait()
-                job() #perform the queued function
+                try:
+                    job() #perform the queued function
+                except serial.serialutil.SerialException: #handle case where serial port is unexpectedly disconnected during communication
+                    self._close()
+
                 self.q.task_done() #flag that the queued task has finished to release other blocking threads
             else:
                 sleep(serTimeout) #sleeping here for a beat gives joined threads the time to release blocking
@@ -2401,9 +2290,10 @@ class Polling:
                     if currentTestIndex >= len(tests):
                         currentTestIndex = 0
                     #enqueue regular polling tasks
-                    self.q.put(lambda self=self, theTest=tests[currentTestIndex]: self._retrieveStatus(theTest))
-                    self.q.put(lambda self=self, theTest=tests[currentTestIndex]: self._retrieveData(theTest))
-                    self.q.put(lambda self=self, theTest=tests[currentTestIndex]: self._retrieveControls(theTest))
+                    nextTest = tests[currentTestIndex]
+                    self.q.put(lambda self=self, theTest=nextTest: self._retrieveStatus(theTest))
+                    self.q.put(lambda self=self, theTest=nextTest: self._retrieveData(theTest))
+                    self.q.put(lambda self=self, theTest=nextTest: self._retrieveControls(theTest))
                     currentTestIndex += 1
 
     #pass an int to enqueue a directive to change the COM port
