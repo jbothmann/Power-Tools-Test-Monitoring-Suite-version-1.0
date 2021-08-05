@@ -175,7 +175,7 @@ class Test:
         if self.online:
             self.connectionHint.config(text="")
         else:
-            self.connectionHint.config(text="No Connection") #TODO: doesn't work (maybe fixed)
+            self.connectionHint.config(text="No Connection")
 
         #reconfigure the minimum size of the main window
         root.update_idletasks()
@@ -244,7 +244,7 @@ class Test:
                     if isinstance(oo[1], bool):
                         self.controls[-1][1] = oo[1] #set control status, boolean
 
-            if isinstance(oo, dict):
+            elif isinstance(oo, dict):
                 if "name" in oo:
                     if isinstance(oo["name"], str):
                         self.controls[-1][0] = oo["name"] #set control label, string
@@ -296,10 +296,9 @@ def connect():
             get.raise_for_status()
             if not get.json()['app'] == "Power Tools Test Manager":
                 raise Exception('wrong app')
-            if not get.json()['version'] in [version, "0.8"]: #TODO: fix
+            if not get.json()['version'] in ["1.0", "0.8"]: 
                 raise Exception('wrong version')
 
-        #TODO: allow url mutation after displaying error?
         except requests.exceptions.ConnectionError as e:
             messagebox.showerror("Power Tools Test Viewer", "That address could not be reached", parent=root.focus_get())
         except requests.exceptions.MissingSchema as e:
@@ -325,7 +324,7 @@ def connect():
             connector.destroy()
 
     #draw url entry
-    urlEntry = T.apply(Entry(connector, width=17))
+    urlEntry = T.apply(Entry(connector, width=20))
     urlEntry.insert(0, main_url)
     urlEntry.grid(row=0, column=0, padx=5, pady=5)
 
@@ -562,8 +561,8 @@ def openControls(InitialTestNum=0):
     controlNameLabels = []
     for ii in range(numberOfControls):
         numLabel.append(T.apply(Label(midFrame, text=str(ii+1))))
-        controlStatusLabels.append(T.apply(Label(midFrame, width=8)))
-        controlNameLabels.append(T(Label(midFrame, width=14, height=1, justify=LEFT)))
+        controlStatusLabels.append(T.apply(Label(midFrame, width=7, anchor=W)))
+        controlNameLabels.append(T(Label(midFrame, width=20, anchor=W)))
 
         numLabel[ii].grid(row=(ii%16+3), column=(int(ii/16)*4))
         controlStatusLabels[ii].grid(row=(ii%16+3), column=(int(ii/16)*4+2))

@@ -322,21 +322,7 @@ class Test:
         for ii in range(len(newStatus)):
             if isinstance(newStatus[ii], bool):
                 self.controls[ii][1] = newStatus[ii]
-            
-
-
-
-#Default named values when creating a new test using the gui dialog #TODO: is this needed?
-defaultValNames = [
-    "Cycles",
-    "Time Elapsed",
-    "Torque",
-    "Speed",
-    "Current Draw",
-    "Voltage",
-    "Temperature",
-    "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""
-    ]
+        
 
 #application functions block
                                   
@@ -421,7 +407,7 @@ def parseJSONsession(s):
 def connect():
     #setup the new menu
     tl = T.apply(Toplevel())
-    tl.title('Connect')
+    tl.title('Connections')
     tl.grab_set() #make window modal
     tl.focus_set()
 
@@ -793,7 +779,7 @@ def addTest():
         showEntry.append(T.apply(Checkbutton(midFrame, variable=showEntryVar[ii], onvalue=1, offvalue=0)))
 
         #populate entries with default values
-        valNameEntries[ii].insert(0, defaultValNames[ii])
+        valNameEntries[ii].insert(0, '')
         
         #draw widgets to screen
         numLabel[ii].grid(row=(ii%16+3), column=(int(ii/16)*4))
@@ -1144,7 +1130,7 @@ def lockDisplayWithPass():
 
     #set window minimum size
     locker.update_idletasks()
-    locker.minsize(width=max(locker.winfo_reqwidth(),0), height=max(locker.winfo_reqheight(),0))
+    locker.minsize(width=max(locker.winfo_reqwidth(),240), height=max(locker.winfo_reqheight(),0))
 
     
 #unlock display, either unlocks the display if it isn't password protected,
@@ -1334,7 +1320,7 @@ def openControls(InitialTestNum=0):
     for ii in range(numberOfControls):
         numLabel.append(T.apply(Label(midFrame, text=str(ii+1))))
         controlButtons.append(T.apply(Button(midFrame, width=8)))
-        controlNameLabels.append(T(Label(midFrame, width=10, justify=LEFT)))
+        controlNameLabels.append(T(Label(midFrame, width=20, justify=LEFT)))
 
         numLabel[ii].grid(row=(ii%16+3), column=(int(ii/16)*4))
         controlButtons[ii].grid(row=(ii%16+3), column=(int(ii/16)*4+1))
@@ -1453,9 +1439,9 @@ def pauseTests():
             poll.retrieveStatus(oo)
 
             if oo.status == Test.NORMAL:
-                pauseButtons[testIndexDict[oo.testNum]].config(text=Test.NORMAL, fg="green", state=NORMAL, command=lambda: withRefresh(lambda x=oo: poll.pause(x.testNum))())
+                pauseButtons[testIndexDict[oo.testNum]].config(text=Test.NORMAL, fg="green", state=NORMAL, command=lambda poll=poll, theTest=oo: withRefresh(lambda theTest=theTest: poll.pause(theTest))())
             elif oo.status == Test.PAUSED:
-                pauseButtons[testIndexDict[oo.testNum]].config(text=Test.PAUSED, fg=T.theme.fg, state=NORMAL, command=lambda: withRefresh(lambda x=oo: poll.resume(x.testNum))())
+                pauseButtons[testIndexDict[oo.testNum]].config(text=Test.PAUSED, fg=T.theme.fg, state=NORMAL, command=lambda poll=poll, theTest=oo: withRefresh(lambda theTest=theTest: poll.resume(theTest))())
             elif oo.status == Test.STOPPED:
                 pauseButtons[testIndexDict[oo.testNum]].config(text=Test.STOPPED.upper(), fg="orange", state=DISABLED, command=None)
             elif oo.status == Test.OFFLINE:    
@@ -1465,10 +1451,10 @@ def pauseTests():
     refresh()
 
     #Pause all button
-    T.apply(Button(botFrame, text="Pause All Tests", command=lambda: withRefresh(pauseAll)())).grid(row=0, column=0, padx=5, pady=5)
+    T.apply(Button(botFrame, text="Pause All Tests", command=lambda poll=poll: withRefresh(poll.pauseAll)())).grid(row=0, column=0, padx=5, pady=5)
 
     #Resume all button
-    T.apply(Button(botFrame, text="Resume All Tests", command=lambda: withRefresh(sendResumeAll)())).grid(row=0, column=1, padx=5, pady=5)
+    T.apply(Button(botFrame, text="Resume All Tests", command=lambda poll=poll: withRefresh(poll.resumeAll)())).grid(row=0, column=1, padx=5, pady=5)
 
     #refresh button
     T.apply(Button(botFrame, text="Refresh", command=refresh)).grid(row=0, column=2, padx=5, pady=5)
@@ -1721,7 +1707,7 @@ def update():
 class Server():
     def __init__(self):
         self.api = flask.Flask(__name__, instance_relative_config=True) #flask instance
-        self.api.config.from_mapping(SECRET_KEY='dev') #TODO
+        self.api.config.from_mapping(SECRET_KEY=b'Umrbfqk1d3ETMbiJ') #I don't know what this does, but it's supposed to be a random bytestring, and you're supposed to keep it secret/
         #register flask view functions
         self.api.add_url_rule('/', 'manifest', self.manifest)
         self.api.add_url_rule('/index', 'index', self.index)
