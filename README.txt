@@ -48,3 +48,7 @@ Known Issues:
 	TypeError: catching classes that do not inherit from BaseException is not allowed
 It's a bug with Tkinter, due to the Image definition referencing an exception type during teardown, after that exception type has already been deleted.
 The issue is harmless, so it's best to just ignore it.
+
+-The Hide/Show Stations dialog still calls stations "tests".  This should be fixed to use more consistent language
+
+-The Cryptography python library was included in the final build, even though it isn't used.  This dependency should be removes
